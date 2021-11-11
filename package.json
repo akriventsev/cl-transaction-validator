@@ -4,8 +4,11 @@
         "test": "mocha -r ts-node/register -t 100000 "
     },
     "dependencies": {
+        "@ethersproject/keccak256": "^5.5.0",
         "@project-serum/anchor": "^0.18.0",
-        "borsh": "^0.6.0"
+        "buffer-layout": "^1.2.2",
+        "keccak": "^3.0.2",
+        "keccak256": "^1.0.3"
     },
     "devDependencies": {
         "@types/chai": "^4.2.22",

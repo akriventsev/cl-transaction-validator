@@ -695,6 +695,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "proposal-validator"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -951,13 +958,6 @@ dependencies = [
  "quote",
  "rustversion",
  "syn",
-]
-
-[[package]]
-name = "spl-token-gen"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
 ]
 
 [[package]]
