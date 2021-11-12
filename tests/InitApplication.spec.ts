@@ -1,36 +1,9 @@
 import * as anchor from "@project-serum/anchor";
-import { BN, Program, Provider, web3 } from "@project-serum/anchor";
-import * as borsh from "borsh";
+import { BN, Program, ProgramError, Provider, web3 } from "@project-serum/anchor";
 import { expect } from "chai";
 import { encodeGovernanceArgs } from './utils/structs';
 import { keccak256 } from "@ethersproject/keccak256";
-
-import { hex } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { publicKey } from "@project-serum/anchor/dist/cjs/utils";
-
-export enum GovernanceOperation {
-  AddStakeholders = 0,
-  RemoveStakeholders = 1,
-  AddOracles = 2,
-  RemoveOracles = 3
-};
-
-
-class GovernancePayload {
-  operation = GovernanceOperation.AddOracles;
-  keys = <anchor.web3.PublicKey[]>[];
-  constructor(fields: { operation: GovernanceOperation, keys: anchor.web3.PublicKey[] } | undefined = undefined) {
-    if (fields) {
-      this.operation = fields.operation;
-      this.keys = fields.keys;
-    }
-  }
-}
-//Borsh schema definition for greeting accounts
-const GovernancePayloadSchema = new Map([
-  [GovernancePayload, { kind: 'struct', fields: [['operation', 'enum'], ['keys', 'array']] }],
-]);
-
+import { assert } from "console";
 
 
 describe("Application", () => {
@@ -39,7 +12,7 @@ describe("Application", () => {
   anchor.setProvider(provider);
 
   const payer = web3.Keypair.generate();
-  const program = anchor.workspace.SplTokenGen as Program;
+  const program = anchor.workspace.ProposalValidator as Program;
 
   var application_storage: anchor.web3.PublicKey;
 
@@ -112,8 +85,13 @@ describe("Application", () => {
       signers: [payer],
     });
 
-
-
+    let st = await program.account.applicationInfo.fetch(initialStorage);
+    if (st.stakeHolders.length != 4) {
+      assert("Invalid stakeHolders count");
+    }
+    if (st.oracles.length != 4) {
+      assert("Invalid oracles count");
+    }
   });
 
   it("Add oracle by valid stakeholders", async () => {
@@ -126,22 +104,15 @@ describe("Application", () => {
     }
     let b = encodeGovernanceArgs(gp);
     let h = keccak256(b);
-    console.log("BORSH: ", b.length, b);
-    console.log("KECCAK: ", h.length, h, Buffer.from(h.substring(2), "hex"));
     let payload = Buffer.from(h.substring(2), "hex");
     const [proposalStorage, proposalStorageBumpSeed] =
       await web3.PublicKey.findProgramAddress(
         [payload, Buffer.from("proposal"), Buffer.from([0x00])],
         program.programId
       );
-    payload = Buffer.from(payload, 32);
-    console.log("Payload ", payload.toString('hex'));
-    console.log("Proposal storage ", proposalStorage.toBase58());
-    console.log("Application storage ", application_storage.toBase58());
-    console.log("Stakeholder ", validStakeholders[0].publicKey.toBase58());
+
 
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      console.log("submit proposal from ", stakeholder.publicKey.toBase58());
       let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
         accounts: {
           payer: stakeholder.publicKey,
@@ -151,10 +122,9 @@ describe("Application", () => {
         },
         signers: [stakeholder],
       });
-      console.log("Tx: ", tx);
     }));
 
-    console.log("try to execute governance");
+
     await program.rpc.addOracles(newOracles, {
       accounts: {
         payer: validStakeholders[2].publicKey,
@@ -165,6 +135,10 @@ describe("Application", () => {
       signers: [validStakeholders[2]],
     });
     validOracles.push(newOracle);
+    let st = await program.account.applicationInfo.fetch(application_storage);
+    if (st.oracles.length != 5) {
+      assert("Invalid oracles count");
+    }
   });
 
   it("Remove oracle by valid stakeholders", async () => {
@@ -176,22 +150,14 @@ describe("Application", () => {
     }
     let b = encodeGovernanceArgs(gp);
     let h = keccak256(b);
-    console.log("BORSH: ", b.length, b);
-    console.log("KECCAK: ", h.length, h, Buffer.from(h.substring(2), "hex"));
     let payload = Buffer.from(h.substring(2), "hex");
     const [proposalStorage, proposalStorageBumpSeed] =
       await web3.PublicKey.findProgramAddress(
         [payload, Buffer.from("proposal"), Buffer.from([0x00])],
         program.programId
       );
-    payload = Buffer.from(payload, 32);
-    console.log("Payload ", payload.toString('hex'));
-    console.log("Proposal storage ", proposalStorage.toBase58());
-    console.log("Application storage ", application_storage.toBase58());
-    console.log("Stakeholder ", validStakeholders[0].publicKey.toBase58());
 
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      console.log("submit proposal from ", stakeholder.publicKey.toBase58());
       let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
         accounts: {
           payer: stakeholder.publicKey,
@@ -201,10 +167,8 @@ describe("Application", () => {
         },
         signers: [stakeholder],
       });
-      console.log("Tx: ", tx);
     }));
 
-    console.log("try to execute governance");
     await program.rpc.removeOracles(OraclesToRemove, {
       accounts: {
         payer: validStakeholders[2].publicKey,
@@ -215,6 +179,190 @@ describe("Application", () => {
       signers: [validStakeholders[2]],
     });
 
+    let st = await program.account.applicationInfo.fetch(application_storage);
+    if (st.oracles.length != 4) {
+      assert("Invalid oracles count");
+    }
+    validOracles.forEach((element, index) => {
+      if (index == 0) validOracles.splice(index, 1);
+    });
+  });
+
+  it("Add stakeholder by valid stakeholders", async () => {
+
+    let newStakeholder = web3.Keypair.generate();
+    let newStakeholders: web3.PublicKey[] = [newStakeholder.publicKey];
+
+    var transaction = new web3.Transaction();
+
+    transaction.add(
+      web3.SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: newStakeholder.publicKey,
+        lamports: web3.LAMPORTS_PER_SOL / 10, // number of SOL to send
+      }),
+    );
+
+    // Sign transaction, broadcast, and confirm
+    var signature = await web3.sendAndConfirmTransaction(provider.connection, transaction, [
+      payer,
+    ]);
+
+    let gp = {
+      operation: { AddStakeholders: {} },
+      keys: newStakeholders
+    }
+    let b = encodeGovernanceArgs(gp);
+    let h = keccak256(b);
+    let payload = Buffer.from(h.substring(2), "hex");
+    const [proposalStorage, proposalStorageBumpSeed] =
+      await web3.PublicKey.findProgramAddress(
+        [payload, Buffer.from("proposal"), Buffer.from([0x00])],
+        program.programId
+      );
+
+
+    await Promise.all(validStakeholders.map(async (stakeholder) => {
+      let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+        accounts: {
+          payer: stakeholder.publicKey,
+          proposalStorage: proposalStorage,
+          application: application_storage,
+          systemProgram: web3.SystemProgram.programId,
+        },
+        signers: [stakeholder],
+      });
+    }));
+
+
+    await program.rpc.addStakeholders(newStakeholders, {
+      accounts: {
+        payer: validStakeholders[2].publicKey,
+        proposalStorage: proposalStorage,
+        application: application_storage,
+        systemProgram: web3.SystemProgram.programId,
+      },
+      signers: [validStakeholders[2]],
+    });
+
+    validStakeholders.push(newStakeholder);
+    let st = await program.account.applicationInfo.fetch(application_storage);
+
+    if (st.stakeHolders.length != 5) {
+      assert("Invalid stakeholders count");
+    }
+
+  });
+
+  it("Remove stakeholder by valid stakeholders", async () => {
+
+    let StakeHoldersToRemove: web3.PublicKey[] = [validOracles[0].publicKey];
+    let gp = {
+      operation: { RemoveStakeholders: {} },
+      keys: StakeHoldersToRemove
+    }
+    let b = encodeGovernanceArgs(gp);
+    let h = keccak256(b);
+    let payload = Buffer.from(h.substring(2), "hex");
+    const [proposalStorage, proposalStorageBumpSeed] =
+      await web3.PublicKey.findProgramAddress(
+        [payload, Buffer.from("proposal"), Buffer.from([0x00])],
+        program.programId
+      );
+
+    await Promise.all(validStakeholders.map(async (stakeholder) => {
+      let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+        accounts: {
+          payer: stakeholder.publicKey,
+          proposalStorage: proposalStorage,
+          application: application_storage,
+          systemProgram: web3.SystemProgram.programId,
+        },
+        signers: [stakeholder],
+      });
+    }));
+
+    await program.rpc.removeStakeholders(StakeHoldersToRemove, {
+      accounts: {
+        payer: validStakeholders[2].publicKey,
+        proposalStorage: proposalStorage,
+        application: application_storage,
+        systemProgram: web3.SystemProgram.programId,
+      },
+      signers: [validStakeholders[2]],
+    });
+    let st = await program.account.applicationInfo.fetch(application_storage);
+
+    if (st.stakeHolders.length != 4) {
+      assert("Invalid stakeholders count");
+    }
+    validStakeholders.forEach((element, index) => {
+      if (index == 0) validStakeholders.splice(index, 1);
+    });
+
+  });
+
+  it("Submit proposal by invalid stakeholder", async () => {
+    let fakeStakeholder = web3.Keypair.generate();
+
+    var transaction = new web3.Transaction();
+
+    transaction.add(
+      web3.SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: fakeStakeholder.publicKey,
+        lamports: web3.LAMPORTS_PER_SOL / 10, // number of SOL to send
+      }),
+    );
+
+    // Sign transaction, broadcast, and confirm
+    var signature = await web3.sendAndConfirmTransaction(provider.connection, transaction, [
+      payer,
+    ]);
+
+    let OraclesToRemove: web3.PublicKey[] = [validOracles[0].publicKey];
+    let gp = {
+      operation: { RemoveOracles: {} },
+      keys: OraclesToRemove
+    }
+    let b = encodeGovernanceArgs(gp);
+    let h = keccak256(b);
+    let payload = Buffer.from(h.substring(2), "hex");
+    const [proposalStorage, proposalStorageBumpSeed] =
+      await web3.PublicKey.findProgramAddress(
+        [payload, Buffer.from("proposal"), Buffer.from([0x00])],
+        program.programId
+      );
+    // @ts-ignore
+    console.old_log = console.log;
+    console.log = function () { };
+    try {
+
+
+      console.log('Populating dropdown with cities'); // prints nothing
+      let tx = await program.rpc.submitProposal(0x00, payload, fakeStakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+        accounts: {
+          payer: fakeStakeholder.publicKey,
+          proposalStorage: proposalStorage,
+          application: application_storage,
+          systemProgram: web3.SystemProgram.programId,
+        },
+        signers: [fakeStakeholder],
+      });
+
+      if (tx != "") {
+        assert();
+      }
+    } catch (error) {
+      // @ts-ignore
+      console.log = console.old_log;
+      // @ts-ignore
+      let msg: string = error.toString();
+      if (msg != "Operation forbidden")
+        assert(msg, "Operation forbidden");
+    }
+    // @ts-ignore
+    console.log = console.old_log;
   });
 
 });

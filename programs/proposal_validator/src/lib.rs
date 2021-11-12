@@ -19,7 +19,7 @@ use std::mem::size_of;
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
-pub mod spl_token_gen {
+pub mod proposal_validator {
     
     
 
