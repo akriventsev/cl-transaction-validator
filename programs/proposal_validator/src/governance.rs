@@ -20,12 +20,12 @@ pub fn execute_governance(ctx: Context<ExecuteGovernanceCtx>, payload: ExecuteGo
     let mut data =  ctx.accounts.proposal_storage.data.borrow_mut();
     
     let mut proposal = ProposalInfo::deserialize(std::borrow::BorrowMut::borrow_mut(&mut data.as_ref()))?;
-    if proposal.confirmed {
+    if proposal.done {
         return  Err(ErrorCode::ProposalAlreadyExecuted.into());
     }
     msg!("accounts application stakeholders BFT {}", ctx.accounts.application.stakeholders_bft.clone());
-    msg!("proposal confirmations count {}", proposal.signs.len());
-    if proposal.signs.len() as u8 <= ctx.accounts.application.stakeholders_bft {
+    msg!("proposal confirmations count {}", proposal.confirmations.len());
+    if proposal.confirmations.len() as u8 <= ctx.accounts.application.stakeholders_bft {
         return Err(ErrorCode::StakeHoldersBFTError.into())
     }
     

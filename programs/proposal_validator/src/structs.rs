@@ -14,14 +14,16 @@ pub struct SubmitProposalArgs {
     pub sign: [u8;32]
 }
 
-#[derive(Default, AnchorSerialize,AnchorDeserialize,Clone)]
+#[account]
+#[derive(Default)]
 pub struct ProposalInfo {
     pub confirmed: bool,
+    pub done: bool,
     pub proposal_type: u8,
     pub payload: Vec<u8>,
-    pub signs: BTreeMap<Vec<u8>,Vec<u8>>,
+    //pub signs: BTreeMap<Vec<u8>,Vec<u8>>,
     pub confirmations: Vec<Pubkey>,
-    pub proof_transaction: Vec<u8>
+    //pub proof_transaction: Vec<u8>
 }
 
 #[account]

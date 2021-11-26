@@ -42,8 +42,8 @@ pub mod proposal_validator {
         Ok(())
     }
     
-    pub fn submit_proposal(ctx: Context<SubmitProposalCtx>, proposal_type: u8, payload: Vec<u8>, oracle: Vec<u8>, sign: Vec<u8>) -> ProgramResult {
-        submit_or_create_proposal(ctx, proposal_type,payload,oracle,sign)
+    pub fn submit_proposal(ctx: Context<SubmitProposalCtx>, proposal_type: u8, payload: Vec<u8>) -> ProgramResult {
+        submit_or_create_proposal(ctx, proposal_type,payload)
     }
 
     pub fn add_stakeholders(ctx: Context<ExecuteGovernanceCtx>, keys: Vec<Pubkey>) -> ProgramResult {
@@ -83,7 +83,7 @@ pub mod proposal_validator {
     
 }
 
-pub fn submit_or_create_proposal(ctx: Context<SubmitProposalCtx>, proposal_type: u8,payload: Vec<u8>, oracle: Vec<u8>, sign: Vec<u8>) -> ProgramResult {
+pub fn submit_or_create_proposal(ctx: Context<SubmitProposalCtx>, proposal_type: u8,payload: Vec<u8>) -> ProgramResult {
     
     match proposal_type {
         0x00 => {
@@ -117,8 +117,19 @@ pub fn submit_or_create_proposal(ctx: Context<SubmitProposalCtx>, proposal_type:
                         match this {
                             Ok(mut t) =>  {
                                 assert_eq!(t.clone().payload, payload.clone());
-                                t.signs.insert(oracle.clone(), sign.clone());
+                                //t.signs.insert(oracle.clone(), sign.clone());
                                 t.confirmations.push(ctx.accounts.payer.key());
+                                
+                                let mut bft = 0 as u8;
+                                if proposal_type == 0x00 {
+                                    bft = ctx.accounts.application.stakeholders_bft.clone();
+                                } else {
+                                    bft = ctx.accounts.application.oracles_bft.clone();
+                                }
+                                
+                                if t.confirmations.len() as u8 >= bft {
+                                    t.confirmed = true;
+                                }
                                 let s = t.clone().try_to_vec()?;
                                 it.as_mut()[..s.len()].copy_from_slice(s.as_slice());
                                 created = true;
@@ -163,8 +174,18 @@ pub fn submit_or_create_proposal(ctx: Context<SubmitProposalCtx>, proposal_type:
         let mut data =  ctx.accounts.proposal_storage.data.borrow_mut();
         let mut proposal = ProposalInfo::default();
         proposal.payload = payload;
-        proposal.signs.insert(oracle,sign);
+        //proposal.signs.insert(oracle,sign);
         proposal.confirmations.push(ctx.accounts.payer.key());
+        let mut bft = 0 as u8;
+        if proposal_type == 0x00 {
+            bft = ctx.accounts.application.stakeholders_bft.clone();
+        } else {
+            bft = ctx.accounts.application.oracles_bft.clone();
+        }
+        
+        if proposal.confirmations.len() as u8 >= bft {
+            proposal.confirmed = true;
+        }
         proposal.proposal_type = proposal_type;
         let s = proposal.try_to_vec()?;
         data[..s.len()].copy_from_slice(s.as_slice());

@@ -113,7 +113,7 @@ describe("Application", () => {
 
 
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+      let tx = await program.rpc.submitProposal(0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -158,7 +158,7 @@ describe("Application", () => {
       );
 
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+      let tx = await program.rpc.submitProposal(0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -168,6 +168,12 @@ describe("Application", () => {
         signers: [stakeholder],
       });
     }));
+
+    let pst = program.account.proposalInfo.fetch(proposalStorage);
+    // @ts-ignore
+    if (!pst.confirmed) {
+      assert("not confirmed");
+    }
 
     await program.rpc.removeOracles(OraclesToRemove, {
       accounts: {
@@ -223,7 +229,7 @@ describe("Application", () => {
 
 
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+      let tx = await program.rpc.submitProposal(0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -271,7 +277,7 @@ describe("Application", () => {
       );
 
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, stakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+      let tx = await program.rpc.submitProposal(0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -340,7 +346,7 @@ describe("Application", () => {
 
 
       console.log('Populating dropdown with cities'); // prints nothing
-      let tx = await program.rpc.submitProposal(0x00, payload, fakeStakeholder.publicKey.toBuffer(), Buffer.from("77777777777777777777777777777777"), {
+      let tx = await program.rpc.submitProposal(0x00, payload, {
         accounts: {
           payer: fakeStakeholder.publicKey,
           proposalStorage: proposalStorage,
