@@ -22,11 +22,13 @@ describe("Application", () => {
   for (let i = 0; i < 4; i++) {
     const stakeholder = web3.Keypair.generate();
     validStakeholders.push(stakeholder)
+    console.log("STAKEHOLDER ", stakeholder.secretKey);
   }
 
   for (let i = 0; i < 4; i++) {
     const oracle = web3.Keypair.generate();
     validOracles.push(oracle)
+    console.log("ORACLE ", oracle.secretKey);
   }
 
   it("Preparing accounts", async () => {
@@ -111,9 +113,17 @@ describe("Application", () => {
         program.programId
       );
 
-
+    await program.rpc.initProposal(proposalStorageBumpSeed, 0x00, payload, {
+      accounts: {
+        payer: validStakeholders[0].publicKey,
+        proposalStorage: proposalStorage,
+        application: application_storage,
+        systemProgram: web3.SystemProgram.programId,
+      },
+      signers: [validStakeholders[0]],
+    });
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, {
+      let tx = await program.rpc.submitProposal(proposalStorageBumpSeed, 0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -157,8 +167,17 @@ describe("Application", () => {
         program.programId
       );
 
+    await program.rpc.initProposal(proposalStorageBumpSeed, 0x00, payload, {
+      accounts: {
+        payer: validStakeholders[0].publicKey,
+        proposalStorage: proposalStorage,
+        application: application_storage,
+        systemProgram: web3.SystemProgram.programId,
+      },
+      signers: [validStakeholders[0]],
+    });
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, {
+      let tx = await program.rpc.submitProposal(proposalStorageBumpSeed, 0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -168,7 +187,8 @@ describe("Application", () => {
         signers: [stakeholder],
       });
     }));
-
+    console.log("PROPOSAL STORAGE: ", proposalStorage.toBase58());
+    console.log("PROPOSAL INFO: ", program.account.proposalInfo);
     let pst = program.account.proposalInfo.fetch(proposalStorage);
     // @ts-ignore
     if (!pst.confirmed) {
@@ -227,9 +247,18 @@ describe("Application", () => {
         program.programId
       );
 
+    await program.rpc.initProposal(proposalStorageBumpSeed, 0x00, payload, {
+      accounts: {
+        payer: validStakeholders[0].publicKey,
+        proposalStorage: proposalStorage,
+        application: application_storage,
+        systemProgram: web3.SystemProgram.programId,
+      },
+      signers: [validStakeholders[0]],
+    });
 
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, {
+      let tx = await program.rpc.submitProposal(proposalStorageBumpSeed, 0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -275,9 +304,17 @@ describe("Application", () => {
         [payload, Buffer.from("proposal"), Buffer.from([0x00])],
         program.programId
       );
-
+    await program.rpc.initProposal(proposalStorageBumpSeed, 0x00, payload, {
+      accounts: {
+        payer: validStakeholders[0].publicKey,
+        proposalStorage: proposalStorage,
+        application: application_storage,
+        systemProgram: web3.SystemProgram.programId,
+      },
+      signers: [validStakeholders[0]],
+    });
     await Promise.all(validStakeholders.map(async (stakeholder) => {
-      let tx = await program.rpc.submitProposal(0x00, payload, {
+      let tx = await program.rpc.submitProposal(proposalStorageBumpSeed, 0x00, payload, {
         accounts: {
           payer: stakeholder.publicKey,
           proposalStorage: proposalStorage,
@@ -344,7 +381,15 @@ describe("Application", () => {
     console.log = function () { };
     try {
 
-
+      await program.rpc.initProposal(proposalStorageBumpSeed, 0x00, payload, {
+        accounts: {
+          payer: validStakeholders[0].publicKey,
+          proposalStorage: proposalStorage,
+          application: application_storage,
+          systemProgram: web3.SystemProgram.programId,
+        },
+        signers: [validStakeholders[0]],
+      });
       console.log('Populating dropdown with cities'); // prints nothing
       let tx = await program.rpc.submitProposal(0x00, payload, {
         accounts: {

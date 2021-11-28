@@ -16,16 +16,14 @@ pub fn execute_governance(ctx: Context<ExecuteGovernanceCtx>, payload: ExecuteGo
     let proposal_storage_seeds:&[&[u8]] = &[operation_payload[..].as_ref(), b"proposal", &[0x00 as u8]];
     let proposal_storage = Pubkey::find_program_address(proposal_storage_seeds.clone(), ctx.program_id);
     let (proposal_storage, proposal_bump_seed) = proposal_storage;
-    assert_eq!(&proposal_storage, ctx.accounts.proposal_storage.key);
-    let mut data =  ctx.accounts.proposal_storage.data.borrow_mut();
+    assert_eq!(proposal_storage, ctx.accounts.proposal_storage.key());
     
-    let mut proposal = ProposalInfo::deserialize(std::borrow::BorrowMut::borrow_mut(&mut data.as_ref()))?;
-    if proposal.done {
+    if ctx.accounts.proposal_storage.done {
         return  Err(ErrorCode::ProposalAlreadyExecuted.into());
     }
     msg!("accounts application stakeholders BFT {}", ctx.accounts.application.stakeholders_bft.clone());
-    msg!("proposal confirmations count {}", proposal.confirmations.len());
-    if proposal.confirmations.len() as u8 <= ctx.accounts.application.stakeholders_bft {
+    msg!("proposal confirmations count {}", ctx.accounts.proposal_storage.confirmations.len());
+    if ctx.accounts.proposal_storage.confirmations.len() as u8 <= ctx.accounts.application.stakeholders_bft {
         return Err(ErrorCode::StakeHoldersBFTError.into())
     }
     
@@ -44,14 +42,9 @@ pub fn execute_governance(ctx: Context<ExecuteGovernanceCtx>, payload: ExecuteGo
                 ctx.accounts.application.remove_oracle(key);
             }
         }
-        
     }
     
-    proposal.confirmed = true;
-    let s = proposal.try_to_vec()?;
-    data[..s.len()].copy_from_slice(s.as_slice());
-
-    
+    ctx.accounts.proposal_storage.done = true;
     Ok(())
 }
 
@@ -64,7 +57,7 @@ pub struct ExecuteGovernanceCtx<'info> {
     #[account(mut)]
     pub application: ProgramAccount<'info, ApplicationInfo>,
     #[account(mut)]
-    pub proposal_storage: AccountInfo<'info>,
+    pub proposal_storage: ProgramAccount<'info, ProposalInfo>,
     #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
 }

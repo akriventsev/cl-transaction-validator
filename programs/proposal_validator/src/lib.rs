@@ -42,8 +42,11 @@ pub mod proposal_validator {
         Ok(())
     }
     
-    pub fn submit_proposal(ctx: Context<SubmitProposalCtx>, proposal_type: u8, payload: Vec<u8>) -> ProgramResult {
-        submit_or_create_proposal(ctx, proposal_type,payload)
+    pub fn submit_proposal(ctx: Context<SubmitProposalCtx>,bump: u32, proposal_type: u8, payload: Vec<u8>) -> ProgramResult {
+        submit_proposal_exec(ctx, bump,proposal_type,payload)
+    }
+    pub fn init_proposal(ctx: Context<InitProposalCtx>,bump: u32, proposal_type: u8, payload: Vec<u8>) -> ProgramResult {
+        init_proposal_exec(ctx, bump,proposal_type,payload)
     }
 
     pub fn add_stakeholders(ctx: Context<ExecuteGovernanceCtx>, keys: Vec<Pubkey>) -> ProgramResult {
@@ -83,7 +86,7 @@ pub mod proposal_validator {
     
 }
 
-pub fn submit_or_create_proposal(ctx: Context<SubmitProposalCtx>, proposal_type: u8,payload: Vec<u8>) -> ProgramResult {
+pub fn submit_proposal_exec(ctx: Context<SubmitProposalCtx>, bump: u32, proposal_type: u8,payload: Vec<u8>) -> ProgramResult {
     
     match proposal_type {
         0x00 => {
@@ -102,98 +105,61 @@ pub fn submit_or_create_proposal(ctx: Context<SubmitProposalCtx>, proposal_type:
     let proposal_storage_seeds:&[&[u8]] = &[tmp_payload.as_slice(), b"proposal",&[proposal_type]];
     let proposal_storage = Pubkey::find_program_address(proposal_storage_seeds.clone(), ctx.program_id);
     let (proposal_storage, proposal_bump_seed) = proposal_storage;
-    assert_eq!(&proposal_storage, ctx.accounts.proposal_storage.key);
+    assert_eq!(proposal_storage, ctx.accounts.proposal_storage.key());
     msg!("tmp storage: {} bump seed {}",proposal_storage.clone(),proposal_bump_seed.clone());
     
-    
-    let mut created = false;
-    {
-        let mut data = match ctx.accounts.proposal_storage.data.try_borrow_mut() {
-            Ok(mut it) => {
-                {
-                   msg!("data borrowed");
-                    let mut proposal = {
-                        let this = ProposalInfo::deserialize(std::borrow::BorrowMut::borrow_mut(&mut it.as_ref()));
-                        match this {
-                            Ok(mut t) =>  {
-                                assert_eq!(t.clone().payload, payload.clone());
-                                //t.signs.insert(oracle.clone(), sign.clone());
-                                t.confirmations.push(ctx.accounts.payer.key());
-                                
-                                let mut bft = 0 as u8;
-                                if proposal_type == 0x00 {
-                                    bft = ctx.accounts.application.stakeholders_bft.clone();
-                                } else {
-                                    bft = ctx.accounts.application.oracles_bft.clone();
-                                }
-                                
-                                if t.confirmations.len() as u8 >= bft {
-                                    t.confirmed = true;
-                                }
-                                let s = t.clone().try_to_vec()?;
-                                it.as_mut()[..s.len()].copy_from_slice(s.as_slice());
-                                created = true;
-                            },
-                            Err(e) => {
-                                msg!("called `Result::unwrap_err()` on an `Err` value");
-                                created = false;
-                            }
-                        }
-                    };
-                   
-                } 
-            },
-            Err(err) => {
-                created = false;
-            },
-        };
+    let mut bft = 0 as u8;
+    ctx.accounts.proposal_storage.confirmations.push(ctx.accounts.payer.key());
+    if proposal_type == 0x00 {
+        bft = ctx.accounts.application.stakeholders_bft.clone();
+    } else {
+        bft = ctx.accounts.application.oracles_bft.clone();
     }
     
-    if !created {
-        let from = ctx.accounts.payer.key;
-        let to = ctx.accounts.proposal_storage.key;
-        let lamports = 10000;
-        let space = 800 as u64;
-        let owner = ctx.program_id;
-
-        invoke_signed(
-            &system_instruction::create_account(from, to, lamports, space, owner),
-            &[
-                ctx.accounts.payer.clone(),
-                ctx.accounts.proposal_storage.clone(),
-                ctx.accounts.system_program.clone(),
-            ],
-            &[&[
-                payload.clone().as_ref(),
-                b"proposal",
-                &[proposal_type],
-                &[proposal_bump_seed],
-            ]],
-        )?;
-
-        let mut data =  ctx.accounts.proposal_storage.data.borrow_mut();
-        let mut proposal = ProposalInfo::default();
-        proposal.payload = payload;
-        //proposal.signs.insert(oracle,sign);
-        proposal.confirmations.push(ctx.accounts.payer.key());
-        let mut bft = 0 as u8;
-        if proposal_type == 0x00 {
-            bft = ctx.accounts.application.stakeholders_bft.clone();
-        } else {
-            bft = ctx.accounts.application.oracles_bft.clone();
-        }
-        
-        if proposal.confirmations.len() as u8 >= bft {
-            proposal.confirmed = true;
-        }
-        proposal.proposal_type = proposal_type;
-        let s = proposal.try_to_vec()?;
-        data[..s.len()].copy_from_slice(s.as_slice());
+    if ctx.accounts.proposal_storage.confirmations.len() as u8 >= bft {
+        ctx.accounts.proposal_storage.confirmed = true;
     }
-    
-
     Ok(())
 }
+
+
+pub fn init_proposal_exec(ctx: Context<InitProposalCtx>, bump: u32, proposal_type: u8,payload: Vec<u8>) -> ProgramResult {
+    
+    match proposal_type {
+        0x00 => {
+            if !ctx.accounts.application.is_valid_stake_holder(ctx.accounts.payer.key()) {
+                return Err(ErrorCode::OperationForbidden.into());
+            }
+        },
+        _ => {
+            if !ctx.accounts.application.is_valid_oracle(ctx.accounts.payer.key()) {
+                return Err(ErrorCode::OperationForbidden.into());
+            }
+        }
+    }
+    
+    let tmp_payload = payload.clone();
+    let proposal_storage_seeds:&[&[u8]] = &[tmp_payload.as_slice(), b"proposal",&[proposal_type]];
+    let proposal_storage = Pubkey::find_program_address(proposal_storage_seeds.clone(), ctx.program_id);
+    let (proposal_storage, proposal_bump_seed) = proposal_storage;
+    assert_eq!(proposal_storage, ctx.accounts.proposal_storage.key());
+    msg!("tmp storage: {} bump seed {}",proposal_storage.clone(),proposal_bump_seed.clone());
+    
+    let mut bft = 0 as u8;
+    ctx.accounts.proposal_storage.confirmations.push(ctx.accounts.payer.key());
+    if proposal_type == 0x00 {
+        bft = ctx.accounts.application.stakeholders_bft.clone();
+    } else {
+        bft = ctx.accounts.application.oracles_bft.clone();
+    }
+    
+    if ctx.accounts.proposal_storage.confirmations.len() as u8 >= bft {
+        ctx.accounts.proposal_storage.confirmed = true;
+    }
+    Ok(())
+}
+
+
 
 const HEADER_BYTES: u64 = 1;
 const HAVE_VALUE: u8 = 0xA1;
@@ -213,23 +179,7 @@ pub struct Init<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
-pub struct Set<'info> {
-    #[account(mut, signer)]
-    pub payer: AccountInfo<'info>,
-    #[account(mut, has_one = storage)]
-    pub storage_reference: ProgramAccount<'info, StorageReference>,
-    #[account(mut, owner = *program_id)]
-    pub storage: AccountInfo<'info>,
-    #[account(
-        mut,
-        constraint = next_storage.owner == &system_program::ID,
-        constraint = next_storage.data.borrow().is_empty(),
-    )]
-    pub next_storage: AccountInfo<'info>,
-    #[account(address = system_program::ID)]
-    pub system_program: AccountInfo<'info>,
-}
+
 
 #[account]
 #[derive(Default)]
@@ -237,21 +187,33 @@ pub struct StorageReference {
     pub storage: Pubkey,
 }
 
-// #[derive(Default, AnchorSerialize,AnchorDeserialize,Clone)]
-// struct Proposal {
-//     pub payload: Vec<u8>,
-//     pub signs: BTreeMap<Vec<u8>,Vec<u8>>
-// }
-
 
 #[derive(Accounts)]
+#[instruction( bump_seed: u32, proposal_type: u8,payload: Vec<u8>)]
+pub struct InitProposalCtx<'info> {
+    #[account(mut, signer)]
+    pub payer: AccountInfo<'info>,
+    #[account()]
+    pub application: ProgramAccount<'info, ApplicationInfo>,
+    #[account(
+        init, payer = payer, space = 800,
+        seeds = [payload.as_slice().as_ref(),b"proposal",&[proposal_type]],
+        bump = bump_seed as u8
+    )]
+    pub proposal_storage: ProgramAccount<'info,ProposalInfo>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+#[instruction( bump_seed: u32, proposal_type: u8,payload: Vec<u8>)]
 pub struct SubmitProposalCtx<'info> {
     #[account(mut, signer)]
     pub payer: AccountInfo<'info>,
     #[account()]
     pub application: ProgramAccount<'info, ApplicationInfo>,
     #[account(mut)]
-    pub proposal_storage: AccountInfo<'info>,
+    pub proposal_storage: ProgramAccount<'info,ProposalInfo>,
     #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
 }
