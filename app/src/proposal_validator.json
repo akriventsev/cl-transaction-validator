@@ -1,0 +1,474 @@
+{
+  "version": "0.0.0",
+  "name": "proposal_validator",
+  "instructions": [
+    {
+      "name": "init",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "initialStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "applicationId",
+          "type": "bytes"
+        },
+        {
+          "name": "stakeHolders",
+          "type": {
+            "vec": "publicKey"
+          }
+        },
+        {
+          "name": "oracles",
+          "type": {
+            "vec": "publicKey"
+          }
+        },
+        {
+          "name": "initialStorageBumpSeed",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "submitProposal",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "application",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposalStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u32"
+        },
+        {
+          "name": "proposalType",
+          "type": "u8"
+        },
+        {
+          "name": "payload",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "initProposal",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "application",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposalStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u32"
+        },
+        {
+          "name": "proposalType",
+          "type": "u8"
+        },
+        {
+          "name": "payload",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "addStakeholders",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "application",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposalStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "keys",
+          "type": {
+            "vec": "publicKey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeStakeholders",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "application",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposalStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "keys",
+          "type": {
+            "vec": "publicKey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addOracles",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "application",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposalStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "keys",
+          "type": {
+            "vec": "publicKey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeOracles",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "application",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposalStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "keys",
+          "type": {
+            "vec": "publicKey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "application",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposalStorage",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": {
+            "defined": "SubmitProposalArgs"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "StorageReference",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "storage",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "confirmed",
+            "type": "bool"
+          },
+          {
+            "name": "done",
+            "type": "bool"
+          },
+          {
+            "name": "proposalType",
+            "type": "u8"
+          },
+          {
+            "name": "payload",
+            "type": "bytes"
+          },
+          {
+            "name": "confirmations",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ApplicationInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stakeholdersBft",
+            "type": "u8"
+          },
+          {
+            "name": "oraclesBft",
+            "type": "u8"
+          },
+          {
+            "name": "applicationId",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "stakeHolders",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "oracles",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "ExecuteGovernancePayload",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operation",
+            "type": {
+              "defined": "GovernanceOperation"
+            }
+          },
+          {
+            "name": "keys",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SubmitProposalArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payload",
+            "type": "bytes"
+          },
+          {
+            "name": "oracle",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sign",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GovernanceOperation",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "AddStakeholders"
+          },
+          {
+            "name": "RemoveStakeholders"
+          },
+          {
+            "name": "AddOracles"
+          },
+          {
+            "name": "RemoveOracles"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 300,
+      "name": "StakeholderAlreadyExists",
+      "msg": "Stakeholder already exists"
+    },
+    {
+      "code": 301,
+      "name": "StakeHoldersBFTError",
+      "msg": "Stakeholder BFT error"
+    },
+    {
+      "code": 302,
+      "name": "ProposalAlreadyExecuted",
+      "msg": "Proposal already executed"
+    },
+    {
+      "code": 303,
+      "name": "OperationForbidden",
+      "msg": "Operation forbidden"
+    },
+    {
+      "code": 304,
+      "name": "ProposalTypeNotSupported",
+      "msg": "Proposal type not supported"
+    }
+  ],
+  "metadata": {
+    "address": "Cv72cfGoC7cYgxq6gZ68ZDAZSRBjRk1fxW8yyC7zpw4z"
+  }
+}

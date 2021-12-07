@@ -46,6 +46,9 @@ function getPayload() {
 
 const app = express();
 const port = 5000;
+app.on('listening', function () {
+    // server ready to accept connections here
+});
 app.get('/', async (request, response) => {
     const provider = await getProvider();
     // Configure the client to use the local cluster.
